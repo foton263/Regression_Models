@@ -1,0 +1,157 @@
+---
+title: "Regression models"
+author: "Dr. Chem. Eng. Nikolaos Fotopoulos"
+date: "Sunday, May 10, 2015"
+output:
+  pdf_document:
+    fig_caption: yes
+---
+
+## Course Project
+
+The project's assignment for the Regression models Course <https://class.coursera.org/regmods-014>, consists in answering the following :
+
+
+_Given you work for Motor Trend, a magazine about the automobile industry. you are asked by examining a data set of a collection of cars, to answer first if Is an automatic or manual transmission better for MPG (mileage per gallon) and then to Quantify the MPG difference between automatic and manual transmissions_ 
+
+Source for this analysis can be found on Github at  <https://github.com/foton263/Regression_Models>
+
+## Analysis
+
+First we load the data set...  
+```{r,warning=FALSE}
+library(car)
+library(ggplot2)
+data(mtcars)
+```
+
+We examine the regressors classes, and we change the categorical variables to factors..
+
+```{r}
+sapply(mtcars,class)
+mtcars$am<-as.factor(mtcars$am)
+levels(mtcars$am)<-c("automatic", "manual")
+mtcars$cyl<-as.factor(mtcars$cyl)
+mtcars$vs<-as.factor(mtcars$vs)
+mtcars$gear<-as.factor(mtcars$gear)
+mtcars$carb<-as.factor(mtcars$carb)
+```
+
+For answering the first question of the project, about what is better for mileage (mpg), automatic or manual gear tranmission, we use a simple linear model. 
+
+```{r}
+automan<-lm(mpg~am -1,mtcars)
+summary(automan)
+```
+
+As it seems  manual gear is superior / better / has a more positive effect / you drive longer per gallon, effect, than automatic gear.
+To ensure that this difference is significant and that we are legitimate to make the above inference, we compute the confidence intervals for the coeficients   
+
+```{r}
+confint(automan)
+```
+
+As we can see at 95% confidence level, the  coefficients' ranges do not overlap, so the difference between them is signifficant and we can reject the null hypothesis.
+The boxplots in the appendix support, visually, the above qualitative interpretation.
+
+
+Next, for quantifying the automatic/manual gear effect on mileage (mpg), we need first to construct a parsimonious model, to ensure normality in residuals and then to examine the quantified effect of the manual gear transmision in the multivariate context.
+
+We define a global model (mdl) on which we perform an anova and variance inflation factor analysis to decide about what variables to keep in our final model (fit)
+
+```{r}
+mdl<-lm(mpg~. ,mtcars)
+anova(mdl)
+vif(mdl)
+```
+
+Significant variables are cyl (as intercept), disp and wt. Since we are interested in quantifying the effect of am on mpg we have to also include am and hp in our model and reexamine how variance inflation is modified for different models, before we choose the best one.
+
+```{r}
+fit1<-lm(mpg~cyl+disp+wt+am ,mtcars)
+fit2<-lm(mpg~cyl+disp+wt+am+hp ,mtcars)
+fit3<-lm(mpg~cyl+wt+am+hp ,mtcars)
+fit4<-lm(mpg~cyl+disp+am+hp ,mtcars)
+fit5<-lm(mpg~cyl+wt+am ,mtcars)
+anova(fit1,fit2,fit3,fit4,fit5)
+vif(fit1)
+vif(fit2)
+```
+
+The best model seems to be the fit2. We examine the summary of this model 
+and we test  for normality with shapiro test.
+
+```{r}
+summary(fit2)
+shapiro.test(fit2$residuals)
+```
+
+We can conclude that residuals follow normal distribution 
+In the appendix, residual diagram and Cook distances are given for spoting outliers and leverage points (figures 2-7).
+
+Finally, we calculate the confidence intervals for the models coefficients so to have an estimate of the quantitative effect the manual gear transmission has on mpg.
+
+```{r}
+confint(fit2)
+```
+
+## Result 
+
+So, answering the second question we can state that the average overall effect of manual gear transmision system over mpg is +1.8 miles / gallon within [-1.1, 4.7] 95% confidence interval. 
+
+### References
+
+P. Teetor, __R Cookbook__, O'Reilly, 2011.
+
+W. Chang, __R Graphics Cookbook__, O'Reilly, 2012.
+
+J. Adler, __R In A Nutshell__, O'Reilly, 2012.
+
+J. Faraway, __Practical Regression and Anova using R__,2002
+
+_may the R be with you..._
+
+
+## Appentix
+
+```{r, fig.width=7,fig.height=5,fig.cap="Gear transmission type effect on MPG"}
+boxplot(mpg ~ am, data=mtcars,ylab = "MPG (miles per gallon)",col=c("cyan","yellow"))
+```
+
+
+
+```{r, fig.width=7,fig.height=3,fig.cap="studentised residuals"}
+plot(fit2$fitted.values,rstudent(fit2)); abline(0, 0)
+```
+
+
+
+```{r, fig.width=7,fig.height=3, fig.cap="residuals vs fitted"}
+plot(fit2,which=1)
+```
+
+
+
+```{r, fig.width=7,fig.height=3, fig.cap="Q-Q diagram"}
+plot(fit2,which=2)
+```
+
+
+
+```{r, fig.width=7,fig.height=3, fig.cap="standardized residuals (rstandard function)"}
+plot(fit2,which=3)
+```
+
+
+
+```{r, fig.width=7,fig.height=3, fig.cap="Cook's distances"}
+plot(fit2,which=4)
+```
+
+
+
+```{r, fig.width=7,fig.height=3, fig.cap="Outliers and leverage"}
+plot(fit2,which=5)
+```       
+
+
